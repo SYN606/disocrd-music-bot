@@ -22,8 +22,12 @@ except Exception as e:
     raise SystemExit(1)
 
 # LOGGING
-logging.basicConfig(level=logging.INFO, format="%(message)s")
-logger = logging.getLogger("dvmusic", )
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+logging.getLogger("wavelink").setLevel(logging.WARNING)
+logging.getLogger("websockets").setLevel(logging.WARNING)
+logging.getLogger("discord.voice_state").setLevel(logging.ERROR)
+logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
+logger = logging.getLogger("dvmusic")
 
 
 def log(message: str):
@@ -36,6 +40,7 @@ def log_error(message: str):
 
 # INTENTS
 intents = discord.Intents.default()
+
 intents.message_content = True
 intents.members = True
 intents.voice_states = True
@@ -51,36 +56,26 @@ class DVMusic(commands.Bot):
 
     # STARTUP
     async def setup_hook(self):
-        # DATABASE
         try:
-
-            await init_db()
-            log("✓ Database initialized")
-
+            await init_db()  # type: ignore
         except Exception as e:
-
             log_error(f"Database initialization failed → {e}")
             if settings.is_dev():
                 traceback.print_exc()
 
         # LAVALINK
         try:
-
-            await connect_lavalink(self, )
+            await connect_lavalink(self)
             log("✓ Lavalink initialized")
 
         except Exception as e:
             log_error(f"Lavalink initialization failed → {e}")
-
             if settings.is_dev():
                 traceback.print_exc()
 
         # LOAD EXTENSIONS
         await self.load_extensions()
-
-        # SYNC SLASH COMMANDS
         if SYNC_COMMANDS:
-
             try:
                 await self.tree.sync()
                 log("✓ Slash commands synced")
@@ -92,10 +87,9 @@ class DVMusic(commands.Bot):
 
     # LOAD COGS
     async def load_extensions(self):
-        folders = ("cmd", "manager.handlers", "manager.startups")
+        folders = ("cmd", "manager.startups")
         for base in folders:
             path = base.replace(".", os.sep)
-
             if not os.path.isdir(path):
                 log(f"Missing folder: {path}")
                 continue
@@ -104,16 +98,17 @@ class DVMusic(commands.Bot):
                 for file in files:
                     if not file.endswith(".py"):
                         continue
+
                     if file.startswith("__"):
                         continue
-                    module = (os.path.join(
-                        root,
-                        file,
-                    ).replace("\\", ".").replace("/", ".").replace(".py", ""))
-                    try:
 
+                    module = (os.path.join(root,
+                                           file).replace("\\", ".").replace(
+                                               "/", ".").replace(".py", ""))
+
+                    try:
                         log(f"Loading: {module}")
-                        await self.load_extension(module, )
+                        await self.load_extension(module)
                         log(f"✓ Loaded {module}")
 
                     except Exception as e:
@@ -121,84 +116,73 @@ class DVMusic(commands.Bot):
                         if settings.is_dev():
                             traceback.print_exc()
 
-    # READY EVENT
+    # READY
     async def on_ready(self):
-        log(f"\nLogged in as "
+        print()
+        log(f"Logged in as "
             f"{self.user} "
             f"({self.user.id})"  # type: ignore
             )
-        log("DV-Music is ready\n")
+
+        log("DV-Music is ready")
 
         # LAVALINK STATUS
         try:
             nodes = wavelink.Pool.nodes
             if nodes:
-                log(f"✓ Lavalink node connected "
-                    f"({len(nodes)} active)")
+                log(f"✓ Lavalink connected "
+                    f"({len(nodes)} node active)")
 
             else:
                 log_error("✗ No Lavalink nodes connected")
+
         except Exception:
             pass
 
-        # COMMAND LIST
-        print("=== COMMANDS LOADED ===")
+        print("\n=== COMMANDS LOADED ===")
         for command in self.commands:
             print(f"- {command.name}")
 
+        print()
+
     # MESSAGE HANDLER
     async def on_message(self, message: discord.Message):
-        # IGNORE BOTS / DMS
         if (message.author.bot or not message.guild):
             return
-
-        # NORMALIZE PREFIXES
         try:
             message.content = normalize(message.content)
+
         except Exception as e:
-            log_error(f"[NORMALIZE ERROR] {e}")
             if settings.is_dev():
                 traceback.print_exc()
-        await self.process_commands(message, )
+        await self.process_commands(message)
 
     # GLOBAL COMMAND ERROR
     async def on_command_error(self, ctx: commands.Context, error: Exception):
         log_error(f"[COMMAND ERROR] {error}")
         if settings.is_dev():
             traceback.print_exc()
+
         try:
+
             await ctx.send(f"⚠️ {error}")
         except Exception:
             pass
 
-    # WAVELINK TRACK START
-    async def on_wavelink_track_start(
-        self,
-        payload: wavelink.TrackStartEventPayload,
-    ):
-        player = payload.player
-        if not player:
-            return
-        track = payload.track
-        if not track:
-            return
-        log(f"[MUSIC] "
-            f"{track.title}")
-
-    # WAVELINK NODE READY
-    async def on_wavelink_node_ready(
-        self,
-        payload: wavelink.NodeReadyEventPayload,
-    ):
+    # NODE READY
+    async def on_wavelink_node_ready(self,
+                                     payload: wavelink.NodeReadyEventPayload):
         log(f"✓ Lavalink node ready → "
             f"{payload.node.identifier}")
 
 
 # ENTRYPOINT
 def main():
+
     bot = DVMusic()
+
     try:
-        log("Starting DV-Music...\n")
+        log("Starting DV-Music...")
         bot.run(TOKEN)  # type: ignore
 
     except discord.errors.PrivilegedIntentsRequired:
