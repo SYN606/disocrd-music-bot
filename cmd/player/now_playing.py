@@ -14,7 +14,6 @@ class NowPlaying(commands.Cog):
 
     # CLEANUP
     async def cleanup(self, ctx: commands.Context):
-
         try:
             await ctx.message.delete()
         except Exception:
@@ -26,10 +25,10 @@ class NowPlaying(commands.Cog):
                              description="Show the current playing track.")
     async def nowplaying(self, ctx: commands.Context):
         await self.cleanup(ctx)
-
         response = Respond(ctx=ctx)
         # VALIDATE PLAYER
         player = await PlayerManager.validate_player(ctx)
+
         if not player:
             return
 
@@ -42,14 +41,22 @@ class NowPlaying(commands.Cog):
                                  f"No active track is currently playing.")
             return await response.send(embed=embed)
 
-        # BUILD PLAYER EMBED
+        # BUILD EMBED
         embed = PlayerManager.build_now_playing(player, track)
 
-        # EXTRA NOW PLAYING INFO
+        # EXTRA INFO
         queue_count = player.queue.count
-        requester = (
-            f"<@{track.extras.requester}>" if hasattr(track, "extras")
-            and getattr(track.extras, "requester", None) else "Unknown")
+        requester = "Unknown"
+
+        try:
+            requester_id = (track.extras.get("requester")
+                            if isinstance(track.extras, dict) else getattr(
+                                track.extras, "requester", None))
+
+            if requester_id:
+                requester = (f"<@{requester_id}>")
+        except Exception:
+            pass
 
         embed.description = ((embed.description or "") + "\n\n" +
                              (f"{EMOJIS['queue']} "
@@ -61,8 +68,10 @@ class NowPlaying(commands.Cog):
                               f"{requester}"))
 
         # CONTROLS
-        view = PlayerControls()
-        await response.send(embed=embed, view=view)
+        view = PlayerControls(player=player, requester_id=ctx.author.id)
+        message = await response.send(embed=embed, view=view)
+        if isinstance(message, discord.Message):
+            view.message = message
 
     # ERROR HANDLER
     @nowplaying.error
