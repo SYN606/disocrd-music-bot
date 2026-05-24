@@ -21,14 +21,11 @@ class Respond:
                         content: str | None = None,
                         **kwargs):
         payload: dict[str, Any] = {}
-
-        # ONLY PASS VALUES IF THEY EXIST
+        # ONLY INCLUDE VALID VALUES
         if embed is not None:
             payload["embed"] = embed
-
         if content is not None:
             payload["content"] = content
-
         payload.update(kwargs)
 
         try:
@@ -36,10 +33,13 @@ class Respond:
             if self.ctx:
                 return await self.ctx.send(**payload)
 
-            # SLASH COMMANDS
+            # INTERACTIONS
             if self.interaction:
+                # FOLLOWUP
                 if self.interaction.response.is_done():
                     return await self.interaction.followup.send(**payload)
+
+                # INITIAL RESPONSE
                 return await self.interaction.response.send_message(**payload)
 
             # MANUAL CHANNEL SEND
@@ -47,11 +47,12 @@ class Respond:
                 return await self.channel.send(**payload)
 
         except Exception as e:
-            # LAST-RESORT FALLBACK
+            # LAST RESORT FALLBACK
             try:
-                error_text = f"Response Error: {e}"
+                error_text = (f"Response Error: {e}")
                 if self.ctx:
                     return await self.ctx.send(error_text)
+
                 if self.channel:
                     return await self.channel.send(error_text)
 
@@ -79,13 +80,11 @@ class Respond:
                                    fields=fields,
                                    footer=footer,
                                    **kwargs)
-
         except Exception as e:
             # EMBED FAILURE FALLBACK
             content = (content or (f"{title or ''}\n"
                                    f"{description or ''}\n\n"
                                    f"Error: {e}"))
-
             embed = None
         return await self._dispatch(embed=embed, content=content)
 
@@ -126,17 +125,35 @@ class Respond:
                                level="INFO",
                                **kwargs)
 
-    # LOADING
+    # MUSIC STYLE LOADING
     async def loading(self,
                       title: str = "Loading...",
                       description: str | None = None,
                       **kwargs):
-
         return await self.send(title=title,
                                description=description,
-                               level="INFO",
+                               level="MUSIC",
                                **kwargs)
 
     # RAW MESSAGE
     async def raw(self, content: str, **kwargs):
         return await self._dispatch(content=content, **kwargs)
+
+    # EDIT MESSAGE
+    async def edit(self,
+                   message: discord.Message,
+                   *,
+                   embed: discord.Embed | None = None,
+                   content: str | None = None,
+                   view=None):
+        try:
+            payload = {}
+            if embed is not None:
+                payload["embed"] = embed
+            if content is not None:
+                payload["content"] = content
+            if view is not None:
+                payload["view"] = view
+            return await message.edit(**payload)
+        except Exception:
+            return None

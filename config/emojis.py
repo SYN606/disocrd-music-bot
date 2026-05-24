@@ -93,18 +93,32 @@ EMOJIS = {
         id=1357256039623295066,
         animated=True,
     ),
-
-    # MUSIC BOT
+    "waveform":
+    PartialEmoji(
+        name="waveform",
+        id=1507840985235980400,
+        animated=True
+    ),
+    "music_player":
+    PartialEmoji(
+        name="music_player",
+        id=1507840989799252059,
+        animated=True
+    ),
+    "ping_neon_player":
+    PartialEmoji(
+        name="ping_neon_player",
+        id=1507840981616033802,
+        animated=True   
+    ),
+    
+    # MUSIC
     "music":
     "🎵",
     "playlist":
     "📜",
     "volume":
     "🔊",
-    "play":
-    "▶️",
-    "pause":
-    "⏸️",
     "stop":
     "⏹️",
     "skip":
@@ -117,8 +131,28 @@ EMOJIS = {
     "🎤",
     "members":
     "👥",
+
+    # CUSTOM MUSIC EMOJIS
+    "play":
+    PartialEmoji(
+        name="play",
+        id=1507840971528736849,
+    ),
+    "pause":
+    PartialEmoji(
+        name="pause",
+        id=1507840997051207740,
+    ),
     "queue":
-    "📋",
+    PartialEmoji(
+        name="queue",
+        id=1507840992089473034,
+    ),
+    "leave":
+    PartialEmoji(
+        name="leave",
+        id=1507840994517848386,
+    ),
 
     # PING SIGNALS
     "signal_red":

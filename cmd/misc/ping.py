@@ -1,10 +1,11 @@
-import platform
 import time
 from datetime import datetime
+
 import psutil
 from discord.ext import commands
-from config.emojis import EMOJIS
+
 from config.embeds import make_embed
+from config.emojis import EMOJIS
 from utils.respond import Respond
 
 
@@ -18,92 +19,89 @@ class Ping(commands.Cog):
     def get_ping_status(self, ping: float):
 
         if ping < 100:
-            return (EMOJIS["signal_green"], "Excellent")
+            return EMOJIS["signal_green"]
 
         if ping < 200:
-            return (EMOJIS["signal_yellow"], "Good")
+            return EMOJIS["signal_yellow"]
 
         if ping < 400:
-            return (EMOJIS["signal_orange"], "Average")
+            return EMOJIS["signal_orange"]
 
-        return (EMOJIS["signal_red"], "Poor")
+        return EMOJIS["signal_red"]
 
-    # FORMAT UPTIME
+    # UPTIME
     def get_uptime(self):
+
         delta = datetime.utcnow() - self.start_time
-        days = delta.days
+
         hours, remainder = divmod(delta.seconds, 3600)
 
         minutes, seconds = divmod(remainder, 60)
-        parts = []
-        if days:
-            parts.append(f"{days}d")
+
+        if delta.days:
+
+            return (f"{delta.days}d "
+                    f"{hours}h")
 
         if hours:
-            parts.append(f"{hours}h")
 
-        if minutes:
-            parts.append(f"{minutes}m")
+            return (f"{hours}h "
+                    f"{minutes}m")
 
-        parts.append(f"{seconds}s")
-        return " ".join(parts)
+        return (f"{minutes}m "
+                f"{seconds}s")
 
-    @commands.hybrid_command(
-        name="ping", description="Display bot latency and system statistics.")
+    @commands.hybrid_command(name="ping", description="Display bot latency.")
     async def ping(self, ctx: commands.Context):
 
         response = Respond(ctx=ctx)
+
         start = time.perf_counter()
+
         loading = await response.raw(f"{EMOJIS['rounded_loading']} "
-                                     f"Checking DV-Music status...")
+                                     f"Checking status...")
 
         end = time.perf_counter()
 
         # LATENCIES
         api_latency = round(self.bot.latency * 1000, 2)
+
         message_latency = round((end - start) * 1000, 2)
 
         # SYSTEM
-        cpu_usage = round(psutil.cpu_percent(), 1)
         ram_usage = round(psutil.virtual_memory().percent, 1)
 
         # STATUS
-        status_emoji, status_text = self.get_ping_status(api_latency)
+        signal = self.get_ping_status(api_latency)
 
-        # GUILD DATA
-        guild_count = len(self.bot.guilds)
-        user_count = sum(guild.member_count or 0 for guild in self.bot.guilds)
-        shard_id = (ctx.guild.shard_id if ctx.guild else 0)
-
-        # BUILD EMBED
+        # EMBED
         embed = make_embed(
-            title="DV-Music Status",
-            description=(f"{status_emoji} "
-                         f"Current network quality: "
-                         f"**{status_text}**"),
+            title=(f"{EMOJIS['music_player']} "
+                   f"DV-Music"),
+            description=(f"{signal} "
+                         f"`{api_latency}ms` "
+                         f"API Latency"),
             level="INFO",
             fields=[
-                ("API Latency", f"`{api_latency}ms`", True),
-                ("Message Latency", f"`{message_latency}ms`", True),
-                ("CPU Usage", f"`{cpu_usage}%`", True),
-                ("RAM Usage", f"`{ram_usage}%`", True),
-                ("Uptime", f"`{self.get_uptime()}`", True),
-                ("Python", f"`{platform.python_version()}`", True),
-                ("Servers", f"`{guild_count}`", True),
-                ("Users", f"`{user_count}`", True),
-                ("Shard", f"`{shard_id}`", True),
+                (("Message", str(EMOJIS["message"])), f"`{message_latency}ms`",
+                 True),
+                (("Uptime", str(EMOJIS["waveform"])), f"`{self.get_uptime()}`",
+                 True),
+                (("Memory", str(EMOJIS["volume"])), f"`{ram_usage}%`", True),
+                (("Servers", str(EMOJIS["music"])),
+                 f"`{len(self.bot.guilds)}`", True),
             ],
             footer=(f"{self.bot.user.name} • "
-                    f"Music System Operational"),
+                    f"Music System"),
         )
 
-        # EDIT LOADING MESSAGE
         if loading:
+
             await loading.edit(content=None, embed=embed)  # type: ignore
 
-        # FALLBACK
         else:
-            await response.send(embed=embed, )
+
+            await response.send(embed=embed)
 
 
 async def setup(bot):
